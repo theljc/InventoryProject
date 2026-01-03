@@ -1,0 +1,139 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "Inv_PlayerController.h"
+
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "Interaction/Inv_Highlightable.h"
+#include "InventoryManagement/Components/Inv_InventoryComponent.h"
+#include "Items/Components/Inv_ItemComponent.h"
+#include "Kismet/GameplayStatics.h"
+
+#define LOCTEXT_NAMESPACE "LogInventory"
+
+DEFINE_LOG_CATEGORY(LogInventory)
+
+AInv_PlayerController::AInv_PlayerController()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	TraceLength = 500.f;
+	ItemTraceChannel = ECC_GameTraceChannel1;
+}
+
+void AInv_PlayerController::ToggleInventory()
+{
+	if (!InventoryComponent.IsValid()) return;
+	
+	InventoryComponent->ToggleInventoryMenu();
+}
+
+void AInv_PlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
+	if (IsValid(Subsystem))
+	{
+		Subsystem->AddMappingContext(DefaultIMC, 0);
+	}
+
+	InventoryComponent = FindComponentByClass<UInv_InventoryComponent>();
+
+	CreateHUDWidget();
+	
+}
+
+void AInv_PlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+	UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
+	EnhancedInputComponent->BindAction(PrimaryInteractAction, ETriggerEvent::Started, this, &AInv_PlayerController::PrimaryInteract);
+	EnhancedInputComponent->BindAction(ToggleInventoryAction, ETriggerEvent::Started, this, &AInv_PlayerController::ToggleInventory);
+
+}
+
+void AInv_PlayerController::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	TraceForItem();
+	
+}
+
+void AInv_PlayerController::PrimaryInteract()
+{
+	UE_LOG(LogInventory, Log, TEXT("Inventory Plugin Loaded"));
+	
+}
+
+void AInv_PlayerController::CreateHUDWidget()
+{
+	if (!IsLocalPlayerController()) return;
+	
+	HUDWidget = CreateWidget<UInv_HUDWidget>(this, HUDWidgetClass);
+	if (IsValid(HUDWidget))
+	{
+		HUDWidget->AddToViewport();
+	}
+	
+}
+
+void AInv_PlayerController::TraceForItem()
+{
+	if (!IsValid(GEngine) or !IsValid(GEngine->GameViewport)) return;
+	
+	FVector2D ViewportSize;
+	GEngine->GameViewport->GetViewportSize(ViewportSize);
+
+	const FVector2D ViewportCenter = ViewportSize / 2.f;
+	FVector TraceStart;
+	FVector Forward;
+	UGameplayStatics::DeprojectScreenToWorld(this, ViewportCenter, TraceStart, Forward);
+
+	FVector TraceEnd = TraceStart + (Forward * TraceLength);
+	FHitResult HitResult;
+	GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ItemTraceChannel);
+
+	LastActor = ThisActor;
+	ThisActor = HitResult.GetActor();
+
+	// 检测不到 Actor
+	if (!ThisActor.IsValid())
+	{
+		if (IsValid(HUDWidget)) HUDWidget->HidePickUpMessage();
+	}
+
+	
+	if (ThisActor == LastActor) return;
+	
+	if (ThisActor.IsValid())
+	{
+		UActorComponent* Highlightable = ThisActor->FindComponentByInterface(UInv_Highlightable::StaticClass());
+		if (IsValid(Highlightable))
+		{
+			IInv_Highlightable::Execute_Highlight(Highlightable);
+		}
+		
+		UInv_ItemComponent* ItemComponent = ThisActor->FindComponentByClass<UInv_ItemComponent>();
+
+		if (!IsValid(ItemComponent)) return;
+	
+		if (IsValid(HUDWidget))
+		{
+			HUDWidget->ShowPickUpMessage(ItemComponent->GetPickUpMessage());
+		}
+		
+	}
+	
+	if (LastActor.IsValid())
+	{
+		UActorComponent* Highlightable = LastActor->FindComponentByInterface(UInv_Highlightable::StaticClass());
+		if (IsValid(Highlightable))
+		{
+			IInv_Highlightable::Execute_UnHighlight(Highlightable);
+		}
+	}
+	
+}
+
