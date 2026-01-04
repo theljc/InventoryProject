@@ -63,8 +63,12 @@ void AInv_PlayerController::Tick(float DeltaTime)
 
 void AInv_PlayerController::PrimaryInteract()
 {
-	UE_LOG(LogInventory, Log, TEXT("Inventory Plugin Loaded"));
-	
+	if (!ThisActor.IsValid()) return;
+
+	UInv_ItemComponent* ItemComponent = ThisActor->FindComponentByClass<UInv_ItemComponent>();
+	if (!IsValid(ItemComponent) or !InventoryComponent.IsValid()) return;
+
+	InventoryComponent->TryAddItem(ItemComponent);
 }
 
 void AInv_PlayerController::CreateHUDWidget()
