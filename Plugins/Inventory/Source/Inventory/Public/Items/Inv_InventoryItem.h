@@ -29,3 +29,11 @@ private:
 	FInstancedStruct ItemManifest;
 	
 };
+
+template<typename FragmentType>
+const FragmentType* GetFragment(const UInv_InventoryItem* Item, const FGameplayTag& FragmentTag)
+{
+	if (!IsValid(Item)) return nullptr;
+	const FInv_ItemManifest& ItemManifest = Item->GetItemManifest();
+	return ItemManifest.GetFragmentOfTypeWithTag<FragmentType>(FragmentTag);
+}

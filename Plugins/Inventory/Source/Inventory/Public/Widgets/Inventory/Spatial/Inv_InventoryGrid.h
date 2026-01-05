@@ -7,6 +7,11 @@
 #include "Types/Inv_GridTypes.h"
 #include "Inv_InventoryGrid.generated.h"
 
+struct FInv_GridFragment;
+struct FInv_ImageFragment;
+class UInv_SlottedItem;
+struct FInv_ItemManifest;
+class UInv_ItemComponent;
 class UInv_InventoryComponent;
 class UCanvasPanel;
 class UInv_GridSlot;
@@ -20,9 +25,23 @@ class INVENTORY_API UInv_InventoryGrid : public UUserWidget
 	
 public:
 	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
-
+	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_ItemComponent* ItemComponent);
+	FInv_SlotAvailabilityResult HasRoomForItem(const FInv_ItemManifest& ItemManifest);
+	bool MatchesCategory(const UInv_InventoryItem* Item) const;
+	FVector2D GetDrawSize(const FInv_GridFragment* GridFragment) const;
+	void SetSlottedItemImage(const UInv_SlottedItem* SlottedItem, const FInv_GridFragment* GridFragment, const FInv_ImageFragment* ImageFragment) const;
+	void AddItemAtIndex(UInv_InventoryItem* Item, const int32 Index, const bool bStackable, const int32 StackAmount);
+	UInv_SlottedItem* CreateSlottedItem(UInv_InventoryItem* Item,
+		const bool bStackable,
+		const int32 StackAmount,
+		const FInv_GridFragment* GridFragment,
+		const FInv_ImageFragment* ImageFragment,
+		const int32 Index);
+	
 	UFUNCTION()
 	void AddItem(UInv_InventoryItem* Item);
+
+	void AddItemToIndices(const FInv_SlotAvailabilityResult& SlotAvailabilityResult, UInv_InventoryItem* Item);
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -30,7 +49,7 @@ protected:
 private:
 	void ConstructGrid();
 	
-	bool MatchesCategory(const UInv_InventoryItem* Item) const;
+	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_InventoryItem* Item);
 	
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
 	
@@ -47,6 +66,9 @@ private:
 	TObjectPtr<UCanvasPanel> CanvasPanel;
 
 	UPROPERTY(EditAnywhere, Category="Inventory")
+	TSubclassOf<UInv_SlottedItem> SlottedItemClass;
+
+	UPROPERTY(EditAnywhere, Category="Inventory")
 	int32 Rows;
 
 	UPROPERTY(EditAnywhere, Category="Inventory")
@@ -56,3 +78,5 @@ private:
 	float TileSize;
 	
 };
+
+
