@@ -27,7 +27,16 @@ public:
 	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
 	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_ItemComponent* ItemComponent);
 	FInv_SlotAvailabilityResult HasRoomForItem(const FInv_ItemManifest& ItemManifest);
+
+protected:
+	virtual void NativeOnInitialized() override;
+	
+private:
+	void ConstructGrid();
+	
+	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_InventoryItem* Item);
 	bool MatchesCategory(const UInv_InventoryItem* Item) const;
+	// 绘制 Item 的大小
 	FVector2D GetDrawSize(const FInv_GridFragment* GridFragment) const;
 	void SetSlottedItemImage(const UInv_SlottedItem* SlottedItem, const FInv_GridFragment* GridFragment, const FInv_ImageFragment* ImageFragment) const;
 	void AddItemAtIndex(UInv_InventoryItem* Item, const int32 Index, const bool bStackable, const int32 StackAmount);
@@ -40,16 +49,12 @@ public:
 	
 	UFUNCTION()
 	void AddItem(UInv_InventoryItem* Item);
-
 	void AddItemToIndices(const FInv_SlotAvailabilityResult& SlotAvailabilityResult, UInv_InventoryItem* Item);
+	// 将 Item 添加到 CanvasPanel 中
+	void AddSlottedItemToCanvas(const int32 Index, const FInv_GridFragment* GridFragment, UInv_SlottedItem* SlottedItem) const;
 
-protected:
-	virtual void NativeOnInitialized() override;
-	
-private:
-	void ConstructGrid();
-	
-	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_InventoryItem* Item);
+	// 更新插槽的状态
+	void UpdateGridSlots(UInv_InventoryItem* NewItem, const int32 Index, bool bStackableItem, const int32 StackAmount);
 	
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
 	
@@ -68,6 +73,10 @@ private:
 	UPROPERTY(EditAnywhere, Category="Inventory")
 	TSubclassOf<UInv_SlottedItem> SlottedItemClass;
 
+	// 插槽中 Item 的索引和对应的 Item
+	UPROPERTY()
+	TMap<int32, TObjectPtr<UInv_SlottedItem>> SlottedItems;
+	
 	UPROPERTY(EditAnywhere, Category="Inventory")
 	int32 Rows;
 

@@ -60,3 +60,23 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	FVector2D IconDimensions{44.f, 44.f};
 };
+
+USTRUCT(BlueprintType)
+struct FInv_StackableFragment : public FInv_ItemFragment
+{
+	GENERATED_BODY()
+
+	int32 GetMaxStackSize() const { return MaxStackSize; }
+	int32 GetStackCount() const { return StackCount; }
+
+private:
+
+	// 每个插槽的最大堆叠数
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	int32 MaxStackSize{1};
+
+	// 拾取时拾取的堆叠数
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	int32 StackCount{1};
+	
+};

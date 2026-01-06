@@ -29,12 +29,18 @@ FInv_SlotAvailabilityResult UInv_InventoryGrid::HasRoomForItem(const UInv_Invent
 FInv_SlotAvailabilityResult UInv_InventoryGrid::HasRoomForItem(const FInv_ItemManifest& ItemManifest)
 {
 	FInv_SlotAvailabilityResult Result;
-	Result.TotalRoomToFill = 1;
+	Result.TotalRoomToFill = 7;
+	Result.bStackable = true;
 	
 	FInv_SlotAvailability SlotAvailability;
-	SlotAvailability.AmountToFill = 1;
+	SlotAvailability.AmountToFill = 2;
 	SlotAvailability.Index = 0;
 	Result.SlotAvailabilities.Add(MoveTemp(SlotAvailability));
+
+	FInv_SlotAvailability SlotAvailability2;
+	SlotAvailability2.AmountToFill = 5;
+	SlotAvailability2.Index = 1;
+	Result.SlotAvailabilities.Add(MoveTemp(SlotAvailability2));
 	
 	return Result;
 }
@@ -50,11 +56,51 @@ void UInv_InventoryGrid::AddItem(UInv_InventoryItem* Item)
 void UInv_InventoryGrid::AddItemToIndices(const FInv_SlotAvailabilityResult& SlotAvailabilityResult,
 	UInv_InventoryItem* Item)
 {
-	
 	for (const auto& Availability : SlotAvailabilityResult.SlotAvailabilities)
 	{
 		AddItemAtIndex(Item, Availability.Index, SlotAvailabilityResult.bStackable, Availability.AmountToFill);
+		UpdateGridSlots(Item, Availability.Index, SlotAvailabilityResult.bStackable, Availability.AmountToFill);
 	}
+	
+}
+
+void UInv_InventoryGrid::AddSlottedItemToCanvas(const int32 Index, const FInv_GridFragment* GridFragment,
+	UInv_SlottedItem* SlottedItem) const
+{
+	CanvasPanel->AddChild(SlottedItem);
+	UCanvasPanelSlot* CanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(SlottedItem);
+	// 设置绘制大小
+	CanvasSlot->SetSize(GetDrawSize(GridFragment));
+	// 获得 Item 要绘制的起始位置
+	const FVector2D DrawPos = UInv_WidgetUtils::GetPositionFromIndex(Index, Columns) * TileSize;
+	// 根据设置的内边距，调整绘制位置
+	const FVector2D DrawPosWithPadding = DrawPos + FVector2D(GridFragment->GetGridPadding());
+	// 设置绘制位置
+	CanvasSlot->SetPosition(DrawPosWithPadding);
+}
+
+void UInv_InventoryGrid::UpdateGridSlots(UInv_InventoryItem* NewItem, const int32 Index, bool bStackableItem, const int32 StackAmount)
+{
+	check(GridSlots.IsValidIndex(Index));
+
+	if (bStackableItem)
+	{
+		GridSlots[Index]->SetStackCount(StackAmount);
+	}
+	
+	const FInv_GridFragment* GridFragment = GetFragment<FInv_GridFragment>(NewItem, FragmentTags::GridFragment);
+	if (!GridFragment) return;
+
+	
+	const FIntPoint Dimensions = GridFragment ? GridFragment->GetGridSize() : FIntPoint(1, 1);
+	UInv_InventoryStatics::ForEach2D(GridSlots, Index, Dimensions, Columns, [&](UInv_GridSlot* GridSlot)
+	{
+		// 更新插槽的状态
+		GridSlot->SetInventoryItem(NewItem);
+		GridSlot->SetUpperLeftIndex(Index);
+		GridSlot->SetOccupiedTexture();
+		GridSlot->SetAvailable(false);
+	});
 	
 }
 
@@ -83,6 +129,8 @@ void UInv_InventoryGrid::AddItemAtIndex(UInv_InventoryItem* Item, const int32 In
 	if (!GridFragment || !ImageFragment) return;
 
 	UInv_SlottedItem* SlottedItem = CreateSlottedItem(Item, bStackable, StackAmount, GridFragment, ImageFragment, Index);
+	AddSlottedItemToCanvas(Index, GridFragment, SlottedItem);
+	SlottedItems.Add(Index, SlottedItem);
 }
 
 UInv_SlottedItem* UInv_InventoryGrid::CreateSlottedItem(UInv_InventoryItem* Item, const bool bStackable,
@@ -93,6 +141,9 @@ UInv_SlottedItem* UInv_InventoryGrid::CreateSlottedItem(UInv_InventoryItem* Item
 	SlottedItem->SetInventoryItem(Item);
 	SetSlottedItemImage(SlottedItem, GridFragment, ImageFragment);
 	SlottedItem->SetGridIndex(Index);
+	SlottedItem->SetIsStackable(bStackable);
+	const int32 StackUpdateAmount = bStackable ? StackAmount : 1;
+	SlottedItem->UpdateStackCount(StackUpdateAmount);
 
 	return SlottedItem;
 }
