@@ -7,6 +7,7 @@
 #include "Types/Inv_GridTypes.h"
 #include "Inv_InventoryGrid.generated.h"
 
+struct FGameplayTag;
 struct FInv_GridFragment;
 struct FInv_ImageFragment;
 class UInv_SlottedItem;
@@ -55,6 +56,27 @@ private:
 
 	// 更新插槽的状态
 	void UpdateGridSlots(UInv_InventoryItem* NewItem, const int32 Index, bool bStackableItem, const int32 StackAmount);
+
+	bool IsIndexClaimed(const TSet<int32>& CheckedIndices, const int32 Index) const;
+	bool HasRoomAtIndex(const UInv_GridSlot* GridSlot, const FIntPoint& Dimensions,
+		const TSet<int32>& CheckedIndices, TSet<int32>& OutTentativelyClaimed,
+		const FGameplayTag& ItemType, const int32 MaxStackSize);
+	// 检查物品占用范围内的所有子插槽是否可用
+	bool CheckSlotConstraints(const UInv_GridSlot* GridSlot, const UInv_GridSlot* SubGridSlot,
+		const TSet<int32>& CheckedIndices, TSet<int32>& OutTentativelyClaimed,
+		const FGameplayTag& ItemType, const int32 MaxStackSize) const;
+	// 获得物品占用的插槽大小
+	FIntPoint GetItemDimensions(const FInv_ItemManifest& Manifest) const;
+	// 判断插槽中是否已经包含了物品
+	bool HasValidItem(const UInv_GridSlot* GridSlot) const;
+	bool IsUpperLeftSlot(const UInv_GridSlot* GridSlot, const UInv_GridSlot* SubGridSlot) const;
+	bool DoesItemTypeMatch(const UInv_InventoryItem* Item, const FGameplayTag& ItemType) const;
+	// 判断物品是否在网格边界内
+	bool IsInGridBounds(const int32 StartIndex, const FIntPoint& ItemDimensions) const;
+	// 确定需要堆叠到插槽的物品数量
+	int32 DetermineFillAmountForSlot(const bool bStackable, const int32 MaxStackSize, const int32 AmountToFill, const UInv_GridSlot* GridSlot) const;
+	// 获取插槽中物品的堆叠数量
+	int32 GetStackAmount(const UInv_GridSlot* GridSlot) const;
 	
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
 	
