@@ -3,7 +3,9 @@
 
 #include "InventoryManagement/Components/Inv_InventoryComponent.h"
 
+#include "Items/Inv_InventoryItem.h"
 #include "Items/Components/Inv_ItemComponent.h"
+#include "Items/Fragments/Inv_ItemFragment.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/Inventory/InventoryBase/Inv_InventoryBase.h"
 
@@ -58,6 +60,7 @@ void UInv_InventoryComponent::TryAddItem(UInv_ItemComponent* ItemComponent)
 
 	if (Result.Item.IsValid() and Result.bStackable)
 	{
+		OnStackChange.Broadcast(Result);
 		// 物品已存在，尝试堆叠
 		Server_AddStackToItem(ItemComponent, Result.TotalRoomToFill, Result.Remainder);
 	}
@@ -72,17 +75,32 @@ void UInv_InventoryComponent::TryAddItem(UInv_ItemComponent* ItemComponent)
 void UInv_InventoryComponent::Server_AddNewItem_Implementation(UInv_ItemComponent* ItemComponent, int32 StackCount)
 {
 	UInv_InventoryItem* NewItem = InventoryList.AddEntry(ItemComponent);
+	NewItem->SetTotalStackCount(StackCount);
+	
 	if (GetOwner()->GetNetMode() == NM_ListenServer || GetOwner()->GetNetMode() == NM_Standalone)
 	{
 		OnItemAdded.Broadcast(NewItem);
 	}
-	
+
+	ItemComponent->PickUp();
 }
 
 void UInv_InventoryComponent::Server_AddStackToItem_Implementation(UInv_ItemComponent* ItemComponent, int32 StackCount,
 	int32 Remainder)
 {
-	
+	const FGameplayTag& ItemType = IsValid(ItemComponent) ? ItemComponent->GetItemManifest().GetItemType() : FGameplayTag::EmptyTag;
+	UInv_InventoryItem* FoundItem = InventoryList.FindFirstItemByType(ItemType);
+	if (!IsValid(FoundItem)) return;
+	FoundItem->SetTotalStackCount(FoundItem->GetTotalStackCount() + StackCount);
+
+	if (Remainder == 0)
+	{
+		ItemComponent->PickUp();
+	}
+	else if (FInv_StackableFragment* StackableFragment = ItemComponent->GetItemManifest().GetFragmentOfTypeMutable<FInv_StackableFragment>())
+	{
+		StackableFragment->SetStackCount(Remainder);
+	}
 }
 
 void UInv_InventoryComponent::BeginPlay()

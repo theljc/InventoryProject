@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Types/Inv_GridTypes.h"
 #include "Widgets/Utils/Inv_WidgetUtils.h"
 #include "Inv_InventoryStatics.generated.h"
 
