@@ -31,7 +31,7 @@ public:
 	void SetInventoryItem(UInv_InventoryItem* Item);
 	UInv_InventoryItem* GetInventoryItem() const { return InventoryItem.Get(); }
 	void SetImageBrush(const FSlateBrush& Brush) const;
-	void UpdateStackCount(int32 StackCount);
+	void UpdateStackCount(int32 Count);
 
 	FSlottedItemClicked OnSlottedItemClicked;
 	
@@ -49,5 +49,6 @@ private:
 	FIntPoint GridDimensions;
 	TWeakObjectPtr<UInv_InventoryItem> InventoryItem;
 	bool bIsStackable{false};
-	
+	int32 StackCount{0};
+
 };

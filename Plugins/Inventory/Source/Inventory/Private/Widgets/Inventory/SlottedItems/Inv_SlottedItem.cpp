@@ -16,12 +16,14 @@ void UInv_SlottedItem::SetImageBrush(const FSlateBrush& Brush) const
 	Image_Icon->SetBrush(Brush);
 }
 
-void UInv_SlottedItem::UpdateStackCount(int32 StackCount)
+void UInv_SlottedItem::UpdateStackCount(int32 Count)
 {
-	if (StackCount > 0)
+	StackCount = Count;
+	
+	if (Count > 0)
 	{
 		Text_StackCount->SetVisibility(ESlateVisibility::Visible);
-		Text_StackCount->SetText(FText::AsNumber(StackCount));
+		Text_StackCount->SetText(FText::AsNumber(Count));
 	}
 	else
 	{
