@@ -6,6 +6,7 @@
 #include "Widgets/Inventory/InventoryBase/Inv_InventoryBase.h"
 #include "Inv_SpatialInventory.generated.h"
 
+class UCanvasPanel;
 class UButton;
 class UWidgetSwitcher;
 class UInv_InventoryGrid;
@@ -18,9 +19,13 @@ class INVENTORY_API UInv_SpatialInventory : public UInv_InventoryBase
 	GENERATED_BODY()
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual FInv_SlotAvailabilityResult HasRoomForItem(UInv_ItemComponent* ItemComponent) const override;
 	
 private:
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UCanvasPanel> CanvasPanel;
+	
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UWidgetSwitcher> Switcher;
 	

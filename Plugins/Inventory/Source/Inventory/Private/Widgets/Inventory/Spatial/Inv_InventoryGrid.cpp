@@ -16,6 +16,7 @@
 #include "Widgets/HoverItem/Inv_HoverItem.h"
 #include "Widgets/Inventory/GridSlots/Inv_GridSlot.h"
 #include "Widgets/Inventory/SlottedItems/Inv_SlottedItem.h"
+#include "Widgets/ItemPopUp/Inv_ItemPopUp.h"
 #include "Widgets/Utils/Inv_WidgetUtils.h"
 
 FInv_SlotAvailabilityResult UInv_InventoryGrid::HasRoomForItem(const UInv_ItemComponent* ItemComponent)
@@ -342,6 +343,12 @@ void UInv_InventoryGrid::OnSlottedItemClicked(int32 GridIndex, const FPointerEve
 		return;
 	}
 
+	if (IsRightClick(MouseEvent))
+	{
+		CreateItemPopUp(GridIndex);
+		return;
+	}
+	
 	if (IsSameStackable(ClickInventoryItem))
 	{
 		const int32 ClickedStackCount = GridSlots[GridIndex]->GetStackCount();
@@ -421,6 +428,56 @@ void UInv_InventoryGrid::OnGridSlotUnhovered(int32 GridIndex, const FPointerEven
 	{
 		GridSlot->SetUnoccupiedTexture();
 	}
+}
+
+void UInv_InventoryGrid::OnPopUpMenuSplit(int32 SplitAmount, int32 Index)
+{
+	UInv_InventoryItem* RightClickedItem = GridSlots[Index]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem)) return;
+	if (!RightClickedItem->IsStackable()) return;
+
+	// 获得插槽
+	const int32 UpperLeftIndex = GridSlots[Index]->GetUpperLeftIndex();
+	UInv_GridSlot* UpperLeftGridSlot = GridSlots[UpperLeftIndex];
+	// 当前堆叠数量
+	const int32 StackCount = UpperLeftGridSlot->GetStackCount();
+	// 计算分割后的堆叠数量
+	const int32 NewStackCount = StackCount - SplitAmount;
+	// 设置为新的堆叠数量
+	UpperLeftGridSlot->SetStackCount(NewStackCount);
+	SlottedItems.FindChecked(UpperLeftIndex)->UpdateStackCount(NewStackCount);
+	// 设置鼠标拖拽的物品和堆叠数量
+	AssignHoverItem(RightClickedItem, UpperLeftIndex, UpperLeftIndex);
+	HoverItem->UpdateStackCount(SplitAmount);
+}
+
+void UInv_InventoryGrid::OnPopUpMenuDrop(int32 Index)
+{
+	UInv_InventoryItem* RightClickedItem = GridSlots[Index]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem)) return;
+	PickUp(RightClickedItem, Index);
+	DropItem();
+}
+
+void UInv_InventoryGrid::OnPopUpMenuConsume(int32 Index)
+{
+	UInv_InventoryItem* RightClickedItem = GridSlots[Index]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem)) return;
+
+	const int32 UpperLeftIndex = GridSlots[Index]->GetUpperLeftIndex();
+	UInv_GridSlot* UpperLeftGridSlot = GridSlots[UpperLeftIndex];
+	const int32 NewStackCount = UpperLeftGridSlot->GetStackCount() - 1;
+
+	UpperLeftGridSlot->SetStackCount(NewStackCount);
+	SlottedItems.FindChecked(UpperLeftIndex)->UpdateStackCount(NewStackCount);
+
+	InventoryComponent->Server_ConsumeItem(RightClickedItem);
+	
+	if (NewStackCount <= 0)
+	{
+		RemoveItemFromGrid(RightClickedItem, Index);
+	}
+	
 }
 
 FIntPoint UInv_InventoryGrid::GetItemDimensions(const FInv_ItemManifest& Manifest) const
@@ -699,6 +756,59 @@ void UInv_InventoryGrid::FillInStack(const int32 FillAmount, const int32 Remaind
 	HoverItem->UpdateStackCount(Remainder);
 }
 
+void UInv_InventoryGrid::CreateItemPopUp(const int32 GridIndex)
+{
+	UInv_InventoryItem* RightClickItem = GridSlots[GridIndex]->GetInventoryItem().Get();
+	if (!IsValid(RightClickItem)) return;
+	if (IsValid(GridSlots[GridIndex]->GetItemPopUp())) return;
+	
+	ItemPopUp = CreateWidget<UInv_ItemPopUp>(this, ItemPopUpClass);
+	GridSlots[GridIndex]->SetItemPopUp(ItemPopUp);
+	
+	OwningCanvasPanel->AddChild(ItemPopUp);
+	UCanvasPanelSlot* CanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(ItemPopUp);
+	const FVector2D MousePosition = UWidgetLayoutLibrary::GetMousePositionOnViewport(GetOwningPlayer());
+	CanvasSlot->SetPosition(MousePosition);
+	CanvasSlot->SetSize(ItemPopUp->GetBoxSize());
+
+	// 滑动条最大值为当前物品堆叠数减1
+	const int32 SliderMax = GridSlots[GridIndex]->GetStackCount() - 1;
+	// 可堆叠的物品才有滑动条
+	if (RightClickItem->IsStackable() and SliderMax > 0)
+	{
+		ItemPopUp->OnSplit.BindDynamic(this, &UInv_InventoryGrid::OnPopUpMenuSplit);
+		// 滑动条默认值为当前物品堆叠数的一半
+		ItemPopUp->SetSliderParams(SliderMax, FMath::Max(1, GridSlots[GridIndex]->GetStackCount() / 2));
+	}
+	else
+	{
+		ItemPopUp->CollapseSplitButton();
+	}
+
+	ItemPopUp->OnDrop.BindDynamic(this, &UInv_InventoryGrid::OnPopUpMenuDrop);
+	
+	if (RightClickItem->IsConsumable())
+	{
+		ItemPopUp->OnConsume.BindDynamic(this, &UInv_InventoryGrid::OnPopUpMenuConsume);
+	}
+	else
+	{
+		ItemPopUp->CollapseConsumeButton();
+	}
+	
+}
+
+void UInv_InventoryGrid::DropItem()
+{
+	if (!IsValid(HoverItem)) return;
+	if (!IsValid(HoverItem->GetInventoryItem())) return;
+
+	InventoryComponent->Server_DropItem(HoverItem->GetInventoryItem(), HoverItem->GetStackCount());
+	
+	ClearHoverItem();
+	ShowCursor();
+}
+
 void UInv_InventoryGrid::ShowCursor()
 {
 	if (!IsValid(GetOwningPlayer())) return;
@@ -709,6 +819,11 @@ void UInv_InventoryGrid::HideCursor()
 {
 	if (!IsValid(GetOwningPlayer())) return;
 	GetOwningPlayer()->SetMouseCursorWidget(EMouseCursor::Type::Default, GetHiddenCursorWidget());
+}
+
+void UInv_InventoryGrid::SetOwningCanvas(UCanvasPanel* OwningCanvas)
+{
+	OwningCanvasPanel = OwningCanvas;
 }
 
 void UInv_InventoryGrid::UpdateTileParameters(const FVector2D& CanvasPosition, const FVector2D& MousePosition)

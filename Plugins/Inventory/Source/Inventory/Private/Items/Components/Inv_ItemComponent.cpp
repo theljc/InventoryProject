@@ -9,8 +9,13 @@
 UInv_ItemComponent::UInv_ItemComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-
 	PickUpMessage = FString("E - Pick Up");
+	SetIsReplicatedByDefault(true);
+}
+
+void UInv_ItemComponent::InitItemManifest(FInv_ItemManifest CopyOfItemManifest)
+{
+	ItemManifest = CopyOfItemManifest;
 }
 
 void UInv_ItemComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

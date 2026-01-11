@@ -28,6 +28,12 @@ public:
 	FPopUpMenuConsume OnConsume;
 
 	int32 GetSplitAmount() const;
+	FVector2D GetBoxSize() const;
+	void SetSliderParams(const float Max, const float Value) const;
+	void SetGridIndex(int32 Index) { GridIndex = Index; }
+	int32 GetGridIndex() const { return GridIndex; }
+	void CollapseSplitButton() const;
+	void CollapseConsumeButton() const;
 	
 protected:
 	virtual void NativeOnInitialized() override;
@@ -65,12 +71,5 @@ private:
 	
 	UFUNCTION()
 	void SliderValueChanged(float Value);
-	
-	void CollapseSplitButton() const;
-	void CollapseConsumeButton() const;
-	void SetSliderParams(const float Max, const float Value) const;
-	FVector2D GetBoxSize() const;
-	void SetGridIndex(int32 Index) { GridIndex = Index; }
-	int32 GetGridIndex() const { return GridIndex; }
 	
 };
