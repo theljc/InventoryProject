@@ -35,6 +35,7 @@ public:
 	void HideCursor();
 	void SetOwningCanvas(UCanvasPanel* OwningCanvas);
 	void DropItem();
+	bool HasHoverItem() const;
 	
 protected:
 	virtual void NativeOnInitialized() override;

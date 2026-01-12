@@ -334,6 +334,9 @@ void UInv_InventoryGrid::AddStacks(const FInv_SlotAvailabilityResult& Result)
 
 void UInv_InventoryGrid::OnSlottedItemClicked(int32 GridIndex, const FPointerEvent& MouseEvent)
 {
+	// 点击插槽时取消悬停时创建的 UI
+	UInv_InventoryStatics::ItemUnhovered(GetOwningPlayer());
+	
 	check(GridSlots.IsValidIndex(GridIndex))
 
 	UInv_InventoryItem* ClickInventoryItem = GridSlots[GridIndex]->GetInventoryItem().Get();
@@ -807,6 +810,11 @@ void UInv_InventoryGrid::DropItem()
 	
 	ClearHoverItem();
 	ShowCursor();
+}
+
+bool UInv_InventoryGrid::HasHoverItem() const
+{
+	return IsValid(HoverItem);
 }
 
 void UInv_InventoryGrid::ShowCursor()
