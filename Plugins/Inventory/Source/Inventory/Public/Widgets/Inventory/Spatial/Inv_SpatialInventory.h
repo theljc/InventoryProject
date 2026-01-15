@@ -6,6 +6,9 @@
 #include "Widgets/Inventory/InventoryBase/Inv_InventoryBase.h"
 #include "Inv_SpatialInventory.generated.h"
 
+class UInv_EquippedSlottedItem;
+struct FGameplayTag;
+class UInv_EquippedGridSlot;
 class UInv_ItemDescription;
 class UCanvasPanel;
 class UButton;
@@ -18,16 +21,23 @@ UCLASS()
 class INVENTORY_API UInv_SpatialInventory : public UInv_InventoryBase
 {
 	GENERATED_BODY()
-protected:
-	virtual void NativeOnInitialized() override;
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
-	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+public:
 	virtual FInv_SlotAvailabilityResult HasRoomForItem(UInv_ItemComponent* ItemComponent) const override;
 	virtual void OnItemHovered(UInv_InventoryItem* Item) override;
 	virtual void OnItemUnHovered() override;
 	virtual bool HasHoverItem() const override;
+	virtual UInv_HoverItem* GetHoverItem() const override;
+	virtual float GetTileSize() const override;
+	
+protected:
+	virtual void NativeOnInitialized() override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	
 private:
+	UPROPERTY()
+	TArray<TObjectPtr<UInv_EquippedGridSlot>> EquippedGridSlots;
+	
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UCanvasPanel> CanvasPanel;
 	
@@ -76,8 +86,22 @@ private:
 	UFUNCTION()
 	void ShowCraftables();
 	
+	UFUNCTION()
+	void EquippedGridSlotClicked(UInv_EquippedGridSlot* EquippedGridSlot, const FGameplayTag& EquipmentTypeTag);
+
+	// 点击装备栏时
+	UFUNCTION()
+	void EquippedSlottedItemClicked(UInv_EquippedSlottedItem* EquippedSlottedItem);
+	
 	void DisableButton(UButton* Button);
 	void SetActiveGrid(UInv_InventoryGrid* Grid, UButton* Button);
 	void SetItemDescriptionSizeAndPosition(UInv_ItemDescription* Description, UCanvasPanel* Canvas) const;
+	bool CanEquipHoverItem(UInv_EquippedGridSlot* EquippedGridSlot, const FGameplayTag& EquipmentTypeTag) const;
+	UInv_EquippedGridSlot* FindSlotWithEquippedItem(UInv_InventoryItem* EquippedItem) const;
+	void ClearSlotOfItem(UInv_EquippedGridSlot* EquippedGridSlot);
+	void RemoveEquippedSlottedItem(UInv_EquippedSlottedItem* EquippedSlottedItem);
+	// 创建装备栏的物品
+	void MakeEquippedSlottedItem(UInv_EquippedSlottedItem* EquippedSlottedItem, UInv_EquippedGridSlot* EquippedGridSlot, UInv_InventoryItem* ItemToEquip);
+	void BroadcastSlotClickedDelegates(UInv_InventoryItem* ItemToEquip, UInv_InventoryItem* ItemToUnequip) const;
 	
 };

@@ -115,3 +115,45 @@ void FInv_ManaPotionFragment::OnConsume(APlayerController* PC)
 
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("Mana Potion consumed! Mana replenished by: %f"), GetValue()));
 }
+
+void FInv_StrengthModifier::OnEquip(APlayerController* PC)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("Equip, Strength Increase: %f"), GetValue()));
+}
+
+void FInv_StrengthModifier::OnUnequip(APlayerController* PC)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("UnEquip, Strength Decrease: %f"), GetValue()));
+}
+
+void FInv_EquipFragment::Equip(APlayerController* PC)
+{
+	if (bEquipped) return;
+	bEquipped = true;
+	for (auto& Modifier : EquipModifiers)
+	{
+		auto& ModRef = Modifier.GetMutable();
+		ModRef.OnEquip(PC);
+	}
+}
+
+void FInv_EquipFragment::Unequip(APlayerController* PC)
+{
+	if (!bEquipped) return;
+	bEquipped = false;
+	for (auto& Modifier : EquipModifiers)
+	{
+		auto& ModRef = Modifier.GetMutable();
+		ModRef.OnUnequip(PC);
+	}
+}
+
+void FInv_EquipFragment::Assimilate(UInv_CompositeBase* Composite) const
+{
+	FInv_InventoryItemFragment::Assimilate(Composite);
+	for (const auto& Modifier : EquipModifiers)
+	{
+		const auto& ModRef = Modifier.Get();
+		ModRef.Assimilate(Composite);
+	}
+}
